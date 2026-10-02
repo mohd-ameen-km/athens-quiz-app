@@ -37,7 +37,7 @@ describe("Question Page Workflow & Action Handlers (MARK_RESULT, NEXT_QUESTION, 
   });
 
   describe("MARK_RESULT Scoring Table & Running Counters", () => {
-    it("Defender answers correct: defender DP +2, challenger CN -1, Total = CP+CN+DP+PP, resolved true, revealed stays false", () => {
+    it("Defender answers correct: defender DP +2, no change to challenger, Total = CP+CN+DP+PP, resolved true, revealed stays false", () => {
       const state = createQuestionPhaseState();
       const defenderId = state.currentChallenge!.attemptOrder[0];
       const challengerId = state.currentChallenge!.attemptOrder[1];
@@ -52,12 +52,12 @@ describe("Question Page Workflow & Action Handlers (MARK_RESULT, NEXT_QUESTION, 
       const challenger = nextState.players.find((p) => p.id === challengerId)!;
       const third = nextState.players.find((p) => p.id === thirdId)!;
 
-      // Counters & Scores
+      // Counters & Scores: defender DP +2, challenger unchanged (0), third unchanged (0)
       expect(defender.dp).toBe(2);
       expect(defender.score).toBe(2);
 
-      expect(challenger.cn).toBe(-1);
-      expect(challenger.score).toBe(-1);
+      expect(challenger.cn).toBe(0);
+      expect(challenger.score).toBe(0);
 
       expect(third.score).toBe(0);
 
@@ -112,7 +112,7 @@ describe("Question Page Workflow & Action Handlers (MARK_RESULT, NEXT_QUESTION, 
       expect(state.currentChallenge?.revealed).toBe(false);
     });
 
-    it("Defender wrong; challenger wrong; third player answers correct: third player PP +2, defender and challenger unchanged", () => {
+    it("Defender wrong; challenger wrong; third player answers correct: challenger CN -1, third player PP +2", () => {
       let state = createQuestionPhaseState();
       const defenderId = state.currentChallenge!.attemptOrder[0];
       const challengerId = state.currentChallenge!.attemptOrder[1];
@@ -125,6 +125,7 @@ describe("Question Page Workflow & Action Handlers (MARK_RESULT, NEXT_QUESTION, 
       });
       expect(state.currentChallenge?.currentAttemptIndex).toBe(1);
       expect(state.currentChallenge?.resolved).toBe(false);
+      expect(state.players.every((p) => p.score === 0)).toBe(true);
 
       // 2. Challenger wrong (attempt 1 -> 2)
       state = gameReducer(state, {
@@ -133,6 +134,11 @@ describe("Question Page Workflow & Action Handlers (MARK_RESULT, NEXT_QUESTION, 
       });
       expect(state.currentChallenge?.currentAttemptIndex).toBe(2);
       expect(state.currentChallenge?.resolved).toBe(false);
+
+      // Challenger penalized with CN -1 upon failing their turn
+      const midChallenger = state.players.find((p) => p.id === challengerId)!;
+      expect(midChallenger.cn).toBe(-1);
+      expect(midChallenger.score).toBe(-1);
 
       // 3. Third player correct
       state = gameReducer(state, {
@@ -144,19 +150,26 @@ describe("Question Page Workflow & Action Handlers (MARK_RESULT, NEXT_QUESTION, 
       const challenger = state.players.find((p) => p.id === challengerId)!;
       const third = state.players.find((p) => p.id === thirdId)!;
 
-      // Scores: third PP +2, defender and challenger unchanged (0)
+      // Scores: third PP +2, challenger CN -1, defender unchanged (0)
       expect(defender.score).toBe(0);
-      expect(challenger.score).toBe(0);
+      expect(challenger.cn).toBe(-1);
+      expect(challenger.score).toBe(-1);
       expect(third.pp).toBe(2);
       expect(third.score).toBe(2);
+
+      // Total = CP + CN + DP + PP
+      expect(defender.score).toBe(defender.cp + defender.cn + defender.dp + defender.pp);
+      expect(challenger.score).toBe(challenger.cp + challenger.cn + challenger.dp + challenger.pp);
+      expect(third.score).toBe(third.cp + third.cn + third.dp + third.pp);
 
       // Safety requirement: resolved is true, revealed stays false
       expect(state.currentChallenge?.resolved).toBe(true);
       expect(state.currentChallenge?.revealed).toBe(false);
     });
 
-    it("All three wrong (attempts exhausted): no score changes, resolved true, revealed stays false", () => {
+    it("All three wrong (attempts exhausted): challenger CN -1, no further score changes on third wrong", () => {
       let state = createQuestionPhaseState();
+      const challengerId = state.currentChallenge!.attemptOrder[1];
 
       // 1. Defender wrong
       state = gameReducer(state, {
@@ -174,9 +187,15 @@ describe("Question Page Workflow & Action Handlers (MARK_RESULT, NEXT_QUESTION, 
         payload: { correct: false },
       });
 
-      // No score changes
-      expect(state.players.every((p) => p.score === 0)).toBe(true);
-      expect(state.players.every((p) => p.cp === 0 && p.cn === 0 && p.dp === 0 && p.pp === 0)).toBe(
+      // Challenger received CN -1 when they failed
+      const challenger = state.players.find((p) => p.id === challengerId)!;
+      expect(challenger.cn).toBe(-1);
+      expect(challenger.score).toBe(-1);
+
+      // Other players have no score changes
+      const others = state.players.filter((p) => p.id !== challengerId);
+      expect(others.every((p) => p.score === 0)).toBe(true);
+      expect(others.every((p) => p.cp === 0 && p.cn === 0 && p.dp === 0 && p.pp === 0)).toBe(
         true
       );
       // Safety requirement: resolved is true, but revealed remains false!

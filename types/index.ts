@@ -80,7 +80,7 @@ export interface Player {
   id: PlayerId;
   name: string;
   cp: number; // Challenge Positive: total points earned while challenging and succeeding after defender failed (+2 each)
-  cn: number; // Challenge Negative: total points lost while challenging when defender succeeded (−1 each)
+  cn: number; // Challenge Negative: total points lost while challenging when challenger failed to answer correctly (−1 each)
   dp: number; // Defended Points: total points earned while successfully defending (+2 each)
   pp: number; // Passed Points: total points earned as third player when both defender and challenger failed (+2 each)
   score: number; // Total: CP + CN + DP + PP

@@ -64,7 +64,7 @@ describe("Global History Stack & UNDO Workflow", () => {
     const defenderId = state.currentChallenge!.attemptOrder[0];
     const challengerId = state.currentChallenge!.attemptOrder[1];
 
-    // 1. Defender correct: defender DP +2, challenger CN -1
+    // 1. Defender correct: defender DP +2, no change to challenger
     state = gameReducer(state, {
       type: "MARK_RESULT",
       payload: { correct: true },
@@ -75,8 +75,8 @@ describe("Global History Stack & UNDO Workflow", () => {
 
     expect(defender.dp).toBe(2);
     expect(defender.score).toBe(2);
-    expect(challenger.cn).toBe(-1);
-    expect(challenger.score).toBe(-1);
+    expect(challenger.cn).toBe(0);
+    expect(challenger.score).toBe(0);
     expect(state.currentChallenge?.resolved).toBe(true);
     expect(state.currentChallenge?.revealed).toBe(false);
     // History should now have 2 snapshots: [topics board, pre-answer question]
@@ -96,6 +96,30 @@ describe("Global History Stack & UNDO Workflow", () => {
     expect(state.currentChallenge?.revealed).toBe(false);
     expect(state.currentChallenge?.currentAttemptIndex).toBe(0);
     expect(state.history).toHaveLength(1);
+
+    // 3. Defender wrong (attempt 0 -> 1)
+    state = gameReducer(state, {
+      type: "MARK_RESULT",
+      payload: { correct: false },
+    });
+    expect(state.currentChallenge?.currentAttemptIndex).toBe(1);
+
+    // 4. Challenger wrong: challenger CN -1
+    state = gameReducer(state, {
+      type: "MARK_RESULT",
+      payload: { correct: false },
+    });
+    const penalizedChallenger = state.players.find((p) => p.id === challengerId)!;
+    expect(penalizedChallenger.cn).toBe(-1);
+    expect(penalizedChallenger.score).toBe(-1);
+    expect(state.currentChallenge?.currentAttemptIndex).toBe(2);
+
+    // 5. UNDO: Reverts challenger's CN penalty and restores attempt 1
+    state = gameReducer(state, { type: "UNDO" });
+    const revertedChallenger = state.players.find((p) => p.id === challengerId)!;
+    expect(revertedChallenger.cn).toBe(0);
+    expect(revertedChallenger.score).toBe(0);
+    expect(state.currentChallenge?.currentAttemptIndex).toBe(1);
   });
 
   it("correctly restores the timer's prior state (seconds and running status) when undoing MARK_RESULT", () => {

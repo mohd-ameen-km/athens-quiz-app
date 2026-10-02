@@ -41,7 +41,7 @@ Scores are tracked via four running counters per player:
 | Counter   | Metric             | Points | Description                                                                        |
 | :-------- | :----------------- | :----- | :--------------------------------------------------------------------------------- |
 | **DP**    | Defended Points    | **+2** | Earned by the **Defender** for answering correctly on the direct turn.             |
-| **CN**    | Challenge Negative | **−1** | Penalty deducted from the **Challenger** when the defender successfully defends.   |
+| **CN**    | Challenge Negative | **−1** | Penalty deducted from the **Challenger** when the challenger fails to answer correctly. |
 | **CP**    | Challenge Positive | **+2** | Earned by the **Challenger** on Pass 1 after the defender failed.                  |
 | **PP**    | Passed Points      | **+2** | Earned by the **Third Player** on Pass 2 when both defender and challenger failed. |
 | **Total** | Total Score        | —      | Calculated as: `Total = CP + CN + DP + PP`                                         |

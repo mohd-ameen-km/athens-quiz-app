@@ -327,7 +327,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         let updatedPlayers = state.players;
 
         if (currentAttemptIndex === 0) {
-          // Defender answers correct: Defender DP +2, Challenger CN -1
+          // Defender answers correct: Defender DP +2, no change to challenger
           updatedPlayers = state.players.map((p) => {
             const clean = sanitizePlayer(p);
             if (clean.id === defenderId) {
@@ -336,14 +336,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 ...clean,
                 dp,
                 score: clean.cp + clean.cn + dp + clean.pp,
-              };
-            }
-            if (clean.id === challengerId) {
-              const cn = clean.cn - 1;
-              return {
-                ...clean,
-                cn,
-                score: clean.cp + cn + clean.dp + clean.pp,
               };
             }
             return clean;
@@ -392,10 +384,29 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         };
       } else {
         // Wrong answer
+        let updatedPlayers = state.players;
+
+        if (currentAttemptIndex === 1) {
+          // Defender wrong; challenger also wrong: Challenger CN -1
+          updatedPlayers = state.players.map((p) => {
+            const clean = sanitizePlayer(p);
+            if (clean.id === challengerId) {
+              const cn = clean.cn - 1;
+              return {
+                ...clean,
+                cn,
+                score: clean.cp + cn + clean.dp + clean.pp,
+              };
+            }
+            return clean;
+          });
+        }
+
         if (currentAttemptIndex < attemptOrder.length - 1) {
           // Advance to next attempt in attemptOrder: reset to passSeconds and run automatically!
           return {
             ...state,
+            players: updatedPlayers,
             currentChallenge: {
               ...state.currentChallenge,
               currentAttemptIndex: currentAttemptIndex + 1,
@@ -406,9 +417,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             history,
           };
         } else {
-          // All three wrong (or attempts exhausted): no score changes, mark resolved, do NOT reveal answer, stop timer
+          // All three wrong (or attempts exhausted): no further score changes, mark resolved, do NOT reveal answer, stop timer
           return {
             ...state,
+            players: updatedPlayers,
             currentChallenge: {
               ...state.currentChallenge,
               resolved: true,
