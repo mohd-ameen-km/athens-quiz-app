@@ -2,17 +2,27 @@ import Papa from "papaparse";
 import { Topic, Question, ParseTsvResult } from "@/types";
 
 /**
+ * Normalizes a cell string:
+ * - Normalizes \r\n and \r to \n
+ * - Converts literal two-character \n sequences into real newline characters
+ * - Trims only leading and trailing whitespace on the cell, preserving internal whitespace and blank lines
+ */
+function normalizeCellValue(val: unknown): string {
+  if (val === undefined || val === null) return "";
+  return String(val).replace(/\r\n/g, "\n").replace(/\r/g, "\n").replace(/\\n/g, "\n").trim();
+}
+
+/**
  * Retrieves a column value from a row object in a case-insensitive manner.
  */
 function getColumnValue(row: Record<string, unknown>, targetName: string): string {
   if (row[targetName] !== undefined && row[targetName] !== null) {
-    return String(row[targetName]).trim();
+    return normalizeCellValue(row[targetName]);
   }
   const targetLower = targetName.toLowerCase();
   for (const key of Object.keys(row)) {
     if (key.trim().toLowerCase() === targetLower) {
-      const val = row[key];
-      return val !== undefined && val !== null ? String(val).trim() : "";
+      return normalizeCellValue(row[key]);
     }
   }
   return "";
@@ -42,7 +52,8 @@ export function parseTsv(tsvContent: string): ParseTsvResult {
       };
     }
 
-    const trimmed = tsvContent.trim();
+    const normalizedContent = tsvContent.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    const trimmed = normalizedContent.trim();
     if (!trimmed) {
       return {
         topics: [],
@@ -50,8 +61,10 @@ export function parseTsv(tsvContent: string): ParseTsvResult {
       };
     }
 
-    const parseResult = Papa.parse<Record<string, unknown>>(tsvContent, {
+    const parseResult = Papa.parse<Record<string, unknown>>(normalizedContent, {
       delimiter: "\t",
+      quoteChar: '"',
+      escapeChar: '"',
       header: true,
       skipEmptyLines: "greedy",
       transformHeader: (header: string) => header.trim(),

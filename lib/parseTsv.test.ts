@@ -87,6 +87,52 @@ describe("parseTsv", () => {
       expect(result.topics[0].questions[0].qnText).toBe("Who painted Starry Night?");
       expect(result.topics[0].questions[0].ansText).toBe("Vincent van Gogh");
     });
+
+    it("should preserve multi-line quoted cells and blank lines between paragraphs", () => {
+      const twoParagraphQuestion =
+        "Object to Be Destroyed is an artwork originally created in 1923. [...] Which American artist's work is this?\n\nBy historical performance, which is the third best club in the Community of Madrid after Real Madrid and Atletico Madrid?";
+      const multiLineAnswer = "Line 1: Man Ray\nLine 2: Getafe CF";
+
+      const tsvContent = [
+        headers,
+        `Art & Sports\t1\t"  ${twoParagraphQuestion}  "\t"${multiLineAnswer}"\t\t\t\t\t\t`,
+        "Science\t1\tWhat is H2O?\tWater\t\t\t\t\t\t",
+        "History\t1\tWhen did WWI begin?\t1914\t\t\t\t\t\t",
+      ].join("\n");
+
+      const result = parseTsv(tsvContent);
+
+      expect(result.errors).toEqual([]);
+      expect(result.topics).toHaveLength(3);
+      expect(result.topics[0].questions[0].qnText).toBe(twoParagraphQuestion);
+      expect(result.topics[0].questions[0].qnText).toContain("\n\n");
+      expect(result.topics[0].questions[0].ansText).toBe(multiLineAnswer);
+    });
+
+    it("should normalize \\r\\n and \\r inside cells to \\n and convert literal \\\\n sequences to real newlines", () => {
+      const literalNewlineQuestion =
+        "First paragraph typed with literal backslash-n.\\n\\nSecond paragraph on a new line.\\nSecond line of second paragraph.";
+      const crlfQuotedQuestion =
+        '"Paragraph A with CRLF.\r\n\r\nParagraph B with CR.\rLine 2 of B."';
+
+      const tsvContent = [
+        headers,
+        `Topic1\t1\t${literalNewlineQuestion}\tAnswer 1\\nSub-answer 1\t\t\t\t\t\t`,
+        `Topic2\t1\t${crlfQuotedQuestion}\tAnswer 2\t\t\t\t\t\t`,
+        `Topic3\t1\tPlain question\tPlain answer\t\t\t\t\t\t`,
+      ].join("\r\n");
+
+      const result = parseTsv(tsvContent);
+
+      expect(result.errors).toEqual([]);
+      expect(result.topics[0].questions[0].qnText).toBe(
+        "First paragraph typed with literal backslash-n.\n\nSecond paragraph on a new line.\nSecond line of second paragraph."
+      );
+      expect(result.topics[0].questions[0].ansText).toBe("Answer 1\nSub-answer 1");
+      expect(result.topics[1].questions[0].qnText).toBe(
+        "Paragraph A with CRLF.\n\nParagraph B with CR.\nLine 2 of B."
+      );
+    });
   });
 
   describe("Validation Failures: Topic count multiple of 3", () => {

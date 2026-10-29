@@ -6,6 +6,7 @@ import { Scoreboard } from "@/components/scoreboard/Scoreboard";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RichText } from "@/components/ui/RichText";
 import {
   Clock,
   Play,
@@ -361,9 +362,10 @@ export function QuestionScreen() {
             <CardContent className="p-6 space-y-6">
               {/* Question Text */}
               <div className="text-left space-y-4">
-                <p className="text-xl sm:text-2xl font-normal font-sans text-ink leading-relaxed">
-                  {currentQuestion?.qnText || "No question text available."}
-                </p>
+                <RichText
+                  text={currentQuestion?.qnText || "No question text available."}
+                  className="text-left text-xl sm:text-2xl font-normal font-sans text-ink leading-relaxed"
+                />
 
                 {/* Question Media shown below question text */}
                 {currentQuestion?.qnImg && (
@@ -421,9 +423,10 @@ export function QuestionScreen() {
                     </Badge>
                   </div>
 
-                  <p className="font-heading text-2xl sm:text-3xl font-semibold text-ink leading-snug">
-                    {currentQuestion?.ansText || "No answer text provided."}
-                  </p>
+                  <RichText
+                    text={currentQuestion?.ansText || "No answer text provided."}
+                    className="text-center font-heading text-2xl sm:text-3xl font-semibold text-ink leading-snug"
+                  />
 
                   {/* Answer Media shown below answer text */}
                   {currentQuestion?.ansImg && (

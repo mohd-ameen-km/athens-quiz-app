@@ -64,7 +64,7 @@ describe("Global History Stack & UNDO Workflow", () => {
     const defenderId = state.currentChallenge!.attemptOrder[0];
     const challengerId = state.currentChallenge!.attemptOrder[1];
 
-    // 1. Defender correct: defender DP +2, no change to challenger
+    // 1. Defender correct: defender DP +2, challenger CN -1
     state = gameReducer(state, {
       type: "MARK_RESULT",
       payload: { correct: true },
@@ -75,8 +75,8 @@ describe("Global History Stack & UNDO Workflow", () => {
 
     expect(defender.dp).toBe(2);
     expect(defender.score).toBe(2);
-    expect(challenger.cn).toBe(0);
-    expect(challenger.score).toBe(0);
+    expect(challenger.cn).toBe(-1);
+    expect(challenger.score).toBe(-1);
     expect(state.currentChallenge?.resolved).toBe(true);
     expect(state.currentChallenge?.revealed).toBe(false);
     // History should now have 2 snapshots: [topics board, pre-answer question]

@@ -327,7 +327,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         let updatedPlayers = state.players;
 
         if (currentAttemptIndex === 0) {
-          // Defender answers correct: Defender DP +2, no change to challenger
+          // Defender answers correct: Defender DP +2, Challenger CN -1
           updatedPlayers = state.players.map((p) => {
             const clean = sanitizePlayer(p);
             if (clean.id === defenderId) {
@@ -336,6 +336,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
                 ...clean,
                 dp,
                 score: clean.cp + clean.cn + dp + clean.pp,
+              };
+            }
+            if (clean.id === challengerId) {
+              const cn = clean.cn - 1;
+              return {
+                ...clean,
+                cn,
+                score: clean.cp + cn + clean.dp + clean.pp,
               };
             }
             return clean;

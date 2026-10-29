@@ -79,10 +79,10 @@ export interface PointLogEntry {
 export interface Player {
   id: PlayerId;
   name: string;
-  cp: number; // Challenge Positive: total points earned while challenging and succeeding after defender failed (+2 each)
-  cn: number; // Challenge Negative: total points lost while challenging when challenger failed to answer correctly (−1 each)
-  dp: number; // Defended Points: total points earned while successfully defending (+2 each)
-  pp: number; // Passed Points: total points earned as third player when both defender and challenger failed (+2 each)
+  cp: number; // Challenge Positive: points earned by a challenger who answered correctly (+2 each)
+  cn: number; // Challenge Negative: −1 penalties taken by a challenger (when defender answers correctly or challenger answers wrong)
+  dp: number; // Defended Points: points earned by a defender who answered correctly (+2 each)
+  pp: number; // Passed Points: points earned by the third player (+2 each)
   score: number; // Total: CP + CN + DP + PP
 }
 
