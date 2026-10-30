@@ -2,12 +2,14 @@ import {
   GameState,
   GameAction,
   GameTopic,
+  Question,
   Player,
   PlayerId,
   CurrentChallenge,
   GameSnapshot,
 } from "@/types";
 import { buildGameSchedule } from "@/lib/scheduling";
+import { normalizeMediaField } from "@/lib/parseTsv";
 
 export const initialGameState: GameState = {
   phase: "setup",
@@ -44,6 +46,25 @@ export function sanitizePlayer(p: Partial<Player> | Record<string, unknown>): Pl
 }
 
 /**
+ * Normalizes a Question's media fields into string[] so legacy plain strings or missing fields never break.
+ */
+export function sanitizeQuestion(q: Partial<Question> | Record<string, unknown>): Question {
+  const qRecord = (q || {}) as Record<string, unknown>;
+  return {
+    topicName: typeof qRecord.topicName === "string" ? qRecord.topicName : "",
+    qnNo: typeof qRecord.qnNo === "number" && !isNaN(qRecord.qnNo) ? qRecord.qnNo : 1,
+    qnText: typeof qRecord.qnText === "string" ? qRecord.qnText : "",
+    ansText: typeof qRecord.ansText === "string" ? qRecord.ansText : "",
+    qnImg: normalizeMediaField(qRecord.qnImg),
+    ansImg: normalizeMediaField(qRecord.ansImg),
+    qnVid: normalizeMediaField(qRecord.qnVid),
+    ansVid: normalizeMediaField(qRecord.ansVid),
+    qnAud: normalizeMediaField(qRecord.qnAud),
+    ansAud: normalizeMediaField(qRecord.ansAud),
+  };
+}
+
+/**
  * Creates an immutable deep snapshot of the current game state to store on the history stack.
  */
 export function createSnapshot(state: GameState): GameSnapshot {
@@ -57,7 +78,7 @@ export function createSnapshot(state: GameState): GameSnapshot {
     })),
     topics: state.topics.map((t) => ({
       ...t,
-      questions: [...t.questions],
+      questions: (t.questions || []).map((q) => sanitizeQuestion(q)),
       takenInChallenge: t.takenInChallenge ? { ...t.takenInChallenge } : null,
     })),
     currentChallenge: state.currentChallenge
@@ -154,6 +175,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         id: topic.name || `topic-${index + 1}`,
         taken: false,
         takenInChallenge: null,
+        questions: (topic.questions || []).map((q) => sanitizeQuestion(q)),
       }));
 
       return {
@@ -539,12 +561,33 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         sanitizePlayer(p)
       );
 
+      const sanitizedTopics: GameTopic[] = (action.payload.topics || []).map((t, index) => ({
+        ...t,
+        id: t.id || t.name || `topic-${index + 1}`,
+        taken: Boolean(t.taken),
+        takenInChallenge: t.takenInChallenge ? { ...t.takenInChallenge } : null,
+        questions: (t.questions || []).map((q) => sanitizeQuestion(q)),
+      }));
+
+      const sanitizedHistory: GameSnapshot[] = (action.payload.history || []).map((snap) => ({
+        ...snap,
+        players: (snap.players || []).map((p) => sanitizePlayer(p)),
+        topics: (snap.topics || []).map((t, index) => ({
+          ...t,
+          id: t.id || t.name || `topic-${index + 1}`,
+          taken: Boolean(t.taken),
+          takenInChallenge: t.takenInChallenge ? { ...t.takenInChallenge } : null,
+          questions: (t.questions || []).map((q) => sanitizeQuestion(q)),
+        })),
+      }));
+
       return {
         ...action.payload,
         players: sanitizedPlayers,
+        topics: sanitizedTopics,
         timerSeconds: action.payload.timerSeconds ?? action.payload.directSeconds ?? 25,
         timerRunning: action.payload.timerRunning ?? false,
-        history: action.payload.history || [],
+        history: sanitizedHistory,
       };
     }
 

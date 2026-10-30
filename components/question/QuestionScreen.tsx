@@ -7,6 +7,7 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RichText } from "@/components/ui/RichText";
+import { normalizeMediaField } from "@/lib/parseTsv";
 import {
   Clock,
   Play,
@@ -62,6 +63,21 @@ export function QuestionScreen() {
 
   // Enlarged image preview state (supports both question and answer images)
   const [enlargedImage, setEnlargedImage] = useState<{ src: string; alt: string } | null>(null);
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
+
+  const qnImages = normalizeMediaField(currentQuestion?.qnImg);
+  const qnVideos = normalizeMediaField(currentQuestion?.qnVid);
+  const qnAudios = normalizeMediaField(currentQuestion?.qnAud);
+  const ansImages = normalizeMediaField(currentQuestion?.ansImg);
+  const ansVideos = normalizeMediaField(currentQuestion?.ansVid);
+  const ansAudios = normalizeMediaField(currentQuestion?.ansAud);
+
+  const visibleQnImages = qnImages.filter((src, idx) => !failedImages[`qn-${idx}-${src}`]);
+  const visibleAnsImages = ansImages.filter((src, idx) => !failedImages[`ans-${idx}-${src}`]);
+
+  useEffect(() => {
+    setFailedImages({});
+  }, [currentChallenge?.topicId, questionIndex]);
 
   // Close enlarged image on Escape key
   useEffect(() => {
@@ -368,47 +384,67 @@ export function QuestionScreen() {
                 />
 
                 {/* Question Media shown below question text */}
-                {currentQuestion?.qnImg && (
-                  <div className="pt-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEnlargedImage({
-                          src: currentQuestion.qnImg!,
-                          alt: "Question media",
-                        })
-                      }
-                      className="group relative rounded-[2px] overflow-hidden border border-ink/10 bg-black/5 max-h-80 flex items-center justify-start cursor-zoom-in hover:border-ink/40 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ink"
-                      title="Click to enlarge image"
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={currentQuestion.qnImg}
-                        alt="Question media"
-                        className="max-h-80 w-auto object-contain rounded-[2px] transition-transform duration-200 group-hover:scale-[1.01]"
-                      />
-                      <div className="absolute bottom-2 right-2 p-1.5 rounded-[2px] bg-ink/75 text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs shadow-xs">
-                        <ZoomIn className="w-3.5 h-3.5" />
+                {visibleQnImages.length > 0 && (
+                  <div className="pt-2 flex flex-wrap items-center gap-3">
+                    {qnImages.map((src, idx) => {
+                      const key = `qn-${idx}-${src}`;
+                      if (failedImages[key]) return null;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() =>
+                            setEnlargedImage({
+                              src,
+                              alt: "Question media",
+                            })
+                          }
+                          className={`group relative rounded-[2px] overflow-hidden border border-ink/10 bg-black/5 flex items-center justify-start cursor-zoom-in hover:border-ink/40 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
+                            visibleQnImages.length === 1 ? "max-h-80" : "max-h-60 sm:max-h-64"
+                          }`}
+                          title="Click to enlarge image"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={src}
+                            alt="Question media"
+                            onError={() =>
+                              setFailedImages((prev) => ({
+                                ...prev,
+                                [key]: true,
+                              }))
+                            }
+                            className={`${
+                              visibleQnImages.length === 1 ? "max-h-80" : "max-h-60 sm:max-h-64"
+                            } w-auto object-contain rounded-[2px] transition-transform duration-200 group-hover:scale-[1.01]`}
+                          />
+                          <div className="absolute bottom-2 right-2 p-1.5 rounded-[2px] bg-ink/75 text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs shadow-xs">
+                            <ZoomIn className="w-3.5 h-3.5" />
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {qnVideos.length > 0 && (
+                  <div className="pt-2 space-y-3">
+                    {qnVideos.map((src, idx) => (
+                      <div
+                        key={`qn-vid-${idx}-${src}`}
+                        className="rounded-[2px] overflow-hidden border border-ink/10 bg-black/5"
+                      >
+                        <video src={src} controls className="max-h-80 w-full rounded-[2px]" />
                       </div>
-                    </button>
+                    ))}
                   </div>
                 )}
 
-                {currentQuestion?.qnVid && (
-                  <div className="pt-2">
-                    <div className="rounded-[2px] overflow-hidden border border-ink/10 bg-black/5">
-                      <video
-                        src={currentQuestion.qnVid}
-                        controls
-                        className="max-h-80 w-full rounded-[2px]"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {currentQuestion?.qnAud && (
-                  <div className="pt-2">
-                    <audio src={currentQuestion.qnAud} controls className="w-full" />
+                {qnAudios.length > 0 && (
+                  <div className="pt-2 space-y-2">
+                    {qnAudios.map((src, idx) => (
+                      <audio key={`qn-aud-${idx}-${src}`} src={src} controls className="w-full" />
+                    ))}
                   </div>
                 )}
               </div>
@@ -429,47 +465,72 @@ export function QuestionScreen() {
                   />
 
                   {/* Answer Media shown below answer text */}
-                  {currentQuestion?.ansImg && (
-                    <div className="pt-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setEnlargedImage({
-                            src: currentQuestion.ansImg!,
-                            alt: "Answer media",
-                          })
-                        }
-                        className="group relative rounded-[2px] overflow-hidden border border-ink/10 bg-black/5 max-h-72 flex items-center justify-center cursor-zoom-in hover:border-ink/40 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ink"
-                        title="Click to enlarge image"
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={currentQuestion.ansImg}
-                          alt="Answer media"
-                          className="max-h-72 w-auto object-contain rounded-[2px] transition-transform duration-200 group-hover:scale-[1.01]"
-                        />
-                        <div className="absolute bottom-2 right-2 p-1.5 rounded-[2px] bg-ink/75 text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs shadow-xs">
-                          <ZoomIn className="w-3.5 h-3.5" />
+                  {visibleAnsImages.length > 0 && (
+                    <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                      {ansImages.map((src, idx) => {
+                        const key = `ans-${idx}-${src}`;
+                        if (failedImages[key]) return null;
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() =>
+                              setEnlargedImage({
+                                src,
+                                alt: "Answer media",
+                              })
+                            }
+                            className={`group relative rounded-[2px] overflow-hidden border border-ink/10 bg-black/5 flex items-center justify-center cursor-zoom-in hover:border-ink/40 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-ink ${
+                              visibleAnsImages.length === 1 ? "max-h-72" : "max-h-56 sm:max-h-60"
+                            }`}
+                            title="Click to enlarge image"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={src}
+                              alt="Answer media"
+                              onError={() =>
+                                setFailedImages((prev) => ({
+                                  ...prev,
+                                  [key]: true,
+                                }))
+                              }
+                              className={`${
+                                visibleAnsImages.length === 1 ? "max-h-72" : "max-h-56 sm:max-h-60"
+                              } w-auto object-contain rounded-[2px] transition-transform duration-200 group-hover:scale-[1.01]`}
+                            />
+                            <div className="absolute bottom-2 right-2 p-1.5 rounded-[2px] bg-ink/75 text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-xs shadow-xs">
+                              <ZoomIn className="w-3.5 h-3.5" />
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {ansVideos.length > 0 && (
+                    <div className="pt-2 max-w-lg w-full space-y-3">
+                      {ansVideos.map((src, idx) => (
+                        <div
+                          key={`ans-vid-${idx}-${src}`}
+                          className="rounded-[2px] overflow-hidden border border-ink/10 bg-black/5"
+                        >
+                          <video src={src} controls className="max-h-72 w-full rounded-[2px]" />
                         </div>
-                      </button>
+                      ))}
                     </div>
                   )}
 
-                  {currentQuestion?.ansVid && (
-                    <div className="pt-2 max-w-lg w-full">
-                      <div className="rounded-[2px] overflow-hidden border border-ink/10 bg-black/5">
-                        <video
-                          src={currentQuestion.ansVid}
+                  {ansAudios.length > 0 && (
+                    <div className="pt-2 max-w-md w-full space-y-2">
+                      {ansAudios.map((src, idx) => (
+                        <audio
+                          key={`ans-aud-${idx}-${src}`}
+                          src={src}
                           controls
-                          className="max-h-72 w-full rounded-[2px]"
+                          className="w-full"
                         />
-                      </div>
-                    </div>
-                  )}
-
-                  {currentQuestion?.ansAud && (
-                    <div className="pt-2 max-w-md w-full">
-                      <audio src={currentQuestion.ansAud} controls className="w-full" />
+                      ))}
                     </div>
                   )}
                 </div>

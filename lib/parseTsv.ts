@@ -13,6 +13,51 @@ function normalizeCellValue(val: unknown): string {
 }
 
 /**
+ * Splits a media cell string into an array of trimmed, non-empty media URLs in original order.
+ * Leaves `data:` URLs intact despite the comma separating their header and payload.
+ */
+export function parseMediaCell(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (!trimmed) return [];
+
+  if (/^data:/i.test(trimmed) && !/,\s*(?:https?:\/\/|\/|data:)/i.test(trimmed)) {
+    return [trimmed];
+  }
+
+  const parts = trimmed.split(",");
+  const links: string[] = [];
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].trim();
+    if (!part) continue;
+
+    if (/^data:/i.test(part) && i + 1 < parts.length) {
+      const payload = parts[i + 1].trim();
+      links.push(`${part},${payload}`);
+      i++;
+    } else {
+      links.push(part);
+    }
+  }
+
+  return links;
+}
+
+/**
+ * Normalizes a media field value (plain string, string[], or undefined/null) into a string[].
+ * Used when restoring older saved state from localStorage or sanitizing topic questions.
+ */
+export function normalizeMediaField(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap((entry) => (typeof entry === "string" ? parseMediaCell(entry) : []));
+  }
+  if (typeof value === "string") {
+    return parseMediaCell(value);
+  }
+  return [];
+}
+
+/**
  * Retrieves a column value from a row object in a case-insensitive manner.
  */
 function getColumnValue(row: Record<string, unknown>, targetName: string): string {
@@ -87,13 +132,13 @@ export function parseTsv(tsvContent: string): ParseTsvResult {
       const qnText = getColumnValue(row, "QnText");
       const ansText = getColumnValue(row, "AnsText");
 
-      // Optional media fields
-      const qnImg = getColumnValue(row, "QnImg") || undefined;
-      const ansImg = getColumnValue(row, "AnsImg") || undefined;
-      const qnVid = getColumnValue(row, "QnVid") || undefined;
-      const ansVid = getColumnValue(row, "AnsVid") || undefined;
-      const qnAud = getColumnValue(row, "QnAud") || undefined;
-      const ansAud = getColumnValue(row, "AnsAud") || undefined;
+      // Media fields (arrays of links; empty array when cell is blank)
+      const qnImg = parseMediaCell(getColumnValue(row, "QnImg"));
+      const ansImg = parseMediaCell(getColumnValue(row, "AnsImg"));
+      const qnVid = parseMediaCell(getColumnValue(row, "QnVid"));
+      const ansVid = parseMediaCell(getColumnValue(row, "AnsVid"));
+      const qnAud = parseMediaCell(getColumnValue(row, "QnAud"));
+      const ansAud = parseMediaCell(getColumnValue(row, "AnsAud"));
 
       // If row has no TopicName
       if (!topicName) {
@@ -130,12 +175,12 @@ export function parseTsv(tsvContent: string): ParseTsvResult {
           qnNo,
           qnText,
           ansText,
-          ...(qnImg ? { qnImg } : {}),
-          ...(ansImg ? { ansImg } : {}),
-          ...(qnVid ? { qnVid } : {}),
-          ...(ansVid ? { ansVid } : {}),
-          ...(qnAud ? { qnAud } : {}),
-          ...(ansAud ? { ansAud } : {}),
+          qnImg,
+          ansImg,
+          qnVid,
+          ansVid,
+          qnAud,
+          ansAud,
         };
 
         currentTopic.questions.push(question);

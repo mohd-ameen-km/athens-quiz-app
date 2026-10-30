@@ -21,12 +21,12 @@ export interface BaseComponentProps {
 
 // Media fields for questions and answers
 export interface QuestionMedia {
-  qnImg?: string;
-  ansImg?: string;
-  qnVid?: string;
-  ansVid?: string;
-  qnAud?: string;
-  ansAud?: string;
+  qnImg: string[];
+  ansImg: string[];
+  qnVid: string[];
+  ansVid: string[];
+  qnAud: string[];
+  ansAud: string[];
 }
 
 // Core Question model

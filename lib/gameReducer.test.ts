@@ -1,20 +1,59 @@
 import { describe, it, expect } from "vitest";
 import { gameReducer, initialGameState } from "./gameReducer";
-import { Topic } from "@/types";
+import { Topic, Player, GameTopic } from "@/types";
 
 describe("gameReducer", () => {
   const sampleTopics: Topic[] = [
     {
       name: "History",
-      questions: [{ topicName: "History", qnNo: 1, qnText: "Q1", ansText: "A1" }],
+      questions: [
+        {
+          topicName: "History",
+          qnNo: 1,
+          qnText: "Q1",
+          ansText: "A1",
+          qnImg: [],
+          ansImg: [],
+          qnVid: [],
+          ansVid: [],
+          qnAud: [],
+          ansAud: [],
+        },
+      ],
     },
     {
       name: "Science",
-      questions: [{ topicName: "Science", qnNo: 1, qnText: "Q2", ansText: "A2" }],
+      questions: [
+        {
+          topicName: "Science",
+          qnNo: 1,
+          qnText: "Q2",
+          ansText: "A2",
+          qnImg: [],
+          ansImg: [],
+          qnVid: [],
+          ansVid: [],
+          qnAud: [],
+          ansAud: [],
+        },
+      ],
     },
     {
       name: "Geography",
-      questions: [{ topicName: "Geography", qnNo: 1, qnText: "Q3", ansText: "A3" }],
+      questions: [
+        {
+          topicName: "Geography",
+          qnNo: 1,
+          qnText: "Q3",
+          ansText: "A3",
+          qnImg: [],
+          ansImg: [],
+          qnVid: [],
+          ansVid: [],
+          qnAud: [],
+          ansAud: [],
+        },
+      ],
     },
   ];
 
@@ -54,7 +93,20 @@ describe("gameReducer", () => {
       id: "History",
       taken: false,
       takenInChallenge: null,
-      questions: [{ topicName: "History", qnNo: 1, qnText: "Q1", ansText: "A1" }],
+      questions: [
+        {
+          topicName: "History",
+          qnNo: 1,
+          qnText: "Q1",
+          ansText: "A1",
+          qnImg: [],
+          ansImg: [],
+          qnVid: [],
+          ansVid: [],
+          qnAud: [],
+          ansAud: [],
+        },
+      ],
     });
   });
 
@@ -141,7 +193,7 @@ describe("gameReducer", () => {
       type: "RESTORE_STATE",
       payload: {
         ...initialGameState,
-        players: legacyPlayers,
+        players: legacyPlayers as Player[],
       },
     });
 
@@ -152,6 +204,49 @@ describe("gameReducer", () => {
       expect(typeof p.pp).toBe("number");
       expect(typeof p.score).toBe("number");
       expect(isNaN(p.score)).toBe(false);
+    });
+  });
+
+  it("should normalize legacy plain string media fields into string[] on RESTORE_STATE", () => {
+    const legacyTopics = [
+      {
+        id: "History",
+        name: "History",
+        taken: false,
+        takenInChallenge: null,
+        questions: [
+          {
+            topicName: "History",
+            qnNo: 1,
+            qnText: "Q1",
+            ansText: "A1",
+            qnImg: "https://example.com/legacy-q.jpg",
+            ansImg: "https://example.com/legacy-a1.jpg, https://example.com/legacy-a2.jpg",
+            qnVid: "",
+          },
+        ],
+      },
+    ] as unknown as GameTopic[];
+
+    const restored = gameReducer(initialGameState, {
+      type: "RESTORE_STATE",
+      payload: {
+        ...initialGameState,
+        topics: legacyTopics,
+      },
+    });
+
+    expect(restored.topics[0].questions[0]).toEqual({
+      topicName: "History",
+      qnNo: 1,
+      qnText: "Q1",
+      ansText: "A1",
+      qnImg: ["https://example.com/legacy-q.jpg"],
+      ansImg: ["https://example.com/legacy-a1.jpg", "https://example.com/legacy-a2.jpg"],
+      qnVid: [],
+      ansVid: [],
+      qnAud: [],
+      ansAud: [],
     });
   });
 });

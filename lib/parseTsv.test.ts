@@ -38,25 +38,35 @@ describe("parseTsv", () => {
         qnNo: 1,
         qnText: "Who was the first president of the United States?",
         ansText: "George Washington",
-        qnImg: "https://example.com/wash.jpg",
-        ansImg: "https://example.com/ans.jpg",
+        qnImg: ["https://example.com/wash.jpg"],
+        ansImg: ["https://example.com/ans.jpg"],
+        qnVid: [],
+        ansVid: [],
+        qnAud: [],
+        ansAud: [],
       });
       expect(result.topics[0].questions[1]).toEqual({
         topicName: "History",
         qnNo: 2,
         qnText: "In what year did World War II end?",
         ansText: "1945",
+        qnImg: [],
+        ansImg: [],
+        qnVid: [],
+        ansVid: [],
+        qnAud: [],
+        ansAud: [],
       });
 
       // Verify Topic 2: Science with video
       expect(result.topics[1].name).toBe("Science");
       expect(result.topics[1].questions).toHaveLength(1);
-      expect(result.topics[1].questions[0].ansVid).toBe("https://example.com/vid.mp4");
+      expect(result.topics[1].questions[0].ansVid).toEqual(["https://example.com/vid.mp4"]);
 
       // Verify Topic 3: Literature with audio
       expect(result.topics[2].name).toBe("Literature");
       expect(result.topics[2].questions).toHaveLength(1);
-      expect(result.topics[2].questions[0].ansAud).toBe("https://example.com/aud.mp3");
+      expect(result.topics[2].questions[0].ansAud).toEqual(["https://example.com/aud.mp3"]);
     });
 
     it("should successfully parse a TSV with 6 topics (multiple of 3)", () => {
@@ -132,6 +142,56 @@ describe("parseTsv", () => {
       expect(result.topics[1].questions[0].qnText).toBe(
         "Paragraph A with CRLF.\n\nParagraph B with CR.\nLine 2 of B."
       );
+    });
+
+    it("should parse media cells: blank cell, single link, two links separated by ',' and ', ', trailing/doubled commas, and data: URL left intact", () => {
+      const dataUrl =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+
+      const tsvContent = [
+        headers,
+        // Row 1: blank cell (QnImg), single link (AnsImg), two links separated by ',' (QnVid), two links separated by ', ' (AnsVid), trailing & doubled commas (QnAud), data: URL (AnsAud)
+        [
+          "MediaTopic1",
+          "1",
+          "Q1",
+          "A1",
+          "",
+          "https://example.com/single.jpg",
+          "https://example.com/v1.mp4,https://example.com/v2.mp4",
+          "https://example.com/av1.mp4, https://example.com/av2.mp4",
+          " , https://example.com/a1.mp3,, https://example.com/a2.mp3, , ",
+          dataUrl,
+        ].join("\t"),
+        // Row 2: data: URL in QnImg
+        ["MediaTopic2", "1", "Q2", "A2", dataUrl, "", "", "", "", ""].join("\t"),
+        // Row 3: all blank media cells
+        ["MediaTopic3", "1", "Q3", "A3", "   ", "", "", "", "", ""].join("\t"),
+      ].join("\n");
+
+      const result = parseTsv(tsvContent);
+
+      expect(result.errors).toEqual([]);
+      expect(result.topics).toHaveLength(3);
+
+      const q1 = result.topics[0].questions[0];
+      expect(q1.qnImg).toEqual([]); // blank cell
+      expect(q1.ansImg).toEqual(["https://example.com/single.jpg"]); // single link
+      expect(q1.qnVid).toEqual(["https://example.com/v1.mp4", "https://example.com/v2.mp4"]); // separated by ,
+      expect(q1.ansVid).toEqual(["https://example.com/av1.mp4", "https://example.com/av2.mp4"]); // separated by ,
+      expect(q1.qnAud).toEqual(["https://example.com/a1.mp3", "https://example.com/a2.mp3"]); // trailing and doubled commas
+      expect(q1.ansAud).toEqual([dataUrl]); // data: URL left intact
+
+      const q2 = result.topics[1].questions[0];
+      expect(q2.qnImg).toEqual([dataUrl]);
+
+      const q3 = result.topics[2].questions[0];
+      expect(q3.qnImg).toEqual([]);
+      expect(q3.ansImg).toEqual([]);
+      expect(q3.qnVid).toEqual([]);
+      expect(q3.ansVid).toEqual([]);
+      expect(q3.qnAud).toEqual([]);
+      expect(q3.ansAud).toEqual([]);
     });
   });
 
